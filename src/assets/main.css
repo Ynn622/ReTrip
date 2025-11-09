@@ -1,35 +1,36 @@
 @import './base.css';
 
+/* 主容器 - 手機優先，置中設計 */
 #app {
-  max-width: 1280px;
+  width: 100%;
+  min-height: 100vh;
   margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  background: var(--bg-cream);
 }
 
-a,
-.green {
+/* 連結樣式 */
+a {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  color: var(--primary-brown);
+  transition: all 0.3s ease;
 }
 
 @media (hover: hover) {
   a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+    color: var(--primary-brown-dark);
   }
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
+/* 平板以上尺寸 - 限制最大寬度並置中 */
+@media (min-width: 768px) {
   #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+    max-width: 768px;
+  }
+}
+
+/* 桌面尺寸 */
+@media (min-width: 1024px) {
+  #app {
+    max-width: 1024px;
   }
 }

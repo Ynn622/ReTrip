@@ -1,10 +1,12 @@
 <script setup>
-import Home from './components/Home.vue'
 </script>
 
 <template>
-  <Home />
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
-<style scoped>
+<style>
+/* 全域樣式已在 base.css 和 main.css 中定義 */
 </style>
