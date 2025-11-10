@@ -6,20 +6,28 @@
   --primary-brown-light: #B8845F;
   
   /* 背景色 */
-  --bg-cream: #F5EFE7;
+  --bg-cream: #fffefe;
   --bg-cream-dark: #F0E8DD;
   --bg-white: #FFFFFF;
-  --bg-card: #FFF9F0;
+  --bg-card: #fbf1e2;
   
   /* 文字色 */
   --text-primary: #5D4037;
   --text-secondary: #8D6E63;
   --text-dark: #3E2723;
+  --text-brown: #7D5A3A;
+  --text-gray: #5A5A5A;
   
   /* 標籤/按鈕色 */
   --tag-orange: #FF6B35;
   --tag-yellow: #FFB84D;
   --tag-green: #4CAF50;
+  --accent-coral: #D4756B;
+  --accent-coral-hover: #C4655B;
+  
+  /* 邊框色 */
+  --border-light: #D4B896;
+  --border-medium: #C4A876;
   
   /* 陰影 */
   --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);

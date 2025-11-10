@@ -1,11 +1,12 @@
 <template>
   <nav class="navbar">
     <div class="nav-container">
-      <!-- Logo 區域 -->
-      <div class="nav-logo">
+      <!-- Logo 區域 - 可點擊回到主頁 -->
+      <router-link to="/" class="nav-logo">
         <img :src="Icon" alt="ReTrip Logo" class="logo-icon" />
-        <span class="logo-text">主頁</span>
-      </div>
+        <!-- 根據路由顯示對應的頁面名稱 -->
+        <span class="logo-text">{{ currentPageName }}</span>
+      </router-link>
 
       <!-- 漢堡選單按鈕 -->
       <button class="hamburger" @click="toggleMenu" :class="{ active: isMenuOpen }">
@@ -38,10 +39,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import Icon from '/icon.png'
 
+const route = useRoute()
 const isMenuOpen = ref(false)
+
+// 根據路由路徑顯示對應的頁面名稱
+const currentPageName = computed(() => {
+  const pageNames = {
+    '/': '主頁',
+    '/ai': 'ReTrip AI',
+    '/attraction': '景點庫'
+  }
+  return pageNames[route.path] || '主頁'
+})
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
@@ -80,11 +93,19 @@ const closeMenu = () => {
   color: #8B6D47;
   font-size: 1.5rem;
   font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.nav-logo:hover {
+  opacity: 0.8;
 }
 
 .logo-icon {
   width: 40px;
   height: 40px;
+  border-radius: 5px;
 }
 
 .logo-text {
