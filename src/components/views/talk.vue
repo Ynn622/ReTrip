@@ -34,10 +34,10 @@ const userInput = ref('');
 // 送出按鈕點擊事件
 const handleSubmit = () => {
   if (userInput.value.trim()) {
-    // 導航到 AI 頁面，並將用戶輸入作為 query 參數傳遞
+    // 導航到 AI 頁面，使用 state 安全地傳遞用戶輸入（不會出現在 URL）
     router.push({
       name: 'Ai',
-      query: {
+      state: {
         message: userInput.value
       }
     });
