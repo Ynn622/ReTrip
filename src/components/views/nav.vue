@@ -28,11 +28,11 @@
         <router-link to="/attraction" class="nav-item" @click="closeMenu">
           <span class="nav-icon"><i class="fas fa-map-marker-alt"></i></span>
           <span class="nav-text">景點庫</span>
-        </router-link to="/login" class="nav-item" @click="closeMenu">
-        <router-link to="/login" class="nav-item" @click="closeMenu">
+        </router-link>
+        <a @click="handleProfileClick" class="nav-item" style="cursor: pointer;">
           <span class="nav-icon"><i class="fas fa-user"></i></span>
           <span class="nav-text">個人資料</span>
-        </router-link>
+        </a>
       </div>
     </div>
   </nav>
@@ -40,11 +40,14 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuth } from '@/utility/authStore'
 import Icon from '/icon.png'
 
 const route = useRoute()
+const router = useRouter()
 const isMenuOpen = ref(false)
+const { isAuthenticated } = useAuth()
 
 // 根據路由路徑顯示對應的頁面名稱
 const currentPageName = computed(() => {
@@ -52,7 +55,8 @@ const currentPageName = computed(() => {
     '/': '主頁',
     '/ai': 'ReTrip AI',
     '/attraction': '景點庫',
-    '/login': '登入'
+    '/login': '登入',
+    '/profile': '個人資料'
   }
   return pageNames[route.path] || '主頁'
 })
@@ -63,6 +67,18 @@ const toggleMenu = () => {
 
 const closeMenu = () => {
   isMenuOpen.value = false
+}
+
+// 處理個人資料點擊
+const handleProfileClick = () => {
+  closeMenu()
+  if (isAuthenticated.value) {
+    // 已登入，導向 profile
+    router.push('/profile')
+  } else {
+    // 未登入，導向 login
+    router.push('/login')
+  }
 }
 </script>
 

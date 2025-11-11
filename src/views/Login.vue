@@ -10,22 +10,36 @@
           <p class="welcome-text">一起成為追憶旅人吧！</p>
         </div>
 
+        <!-- 錯誤訊息 -->
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
         <!-- 登入按鈕區域 -->
         <div class="login-buttons">
           <!-- Facebook 登入按鈕 -->
-          <button class="login-btn facebook-btn" @click="loginWithFacebook">
-            <span class="btn-icon facebook-icon">
+          <button 
+            class="login-btn facebook-btn" 
+            @click="loginWithFacebook"
+            :disabled="isLoading"
+          >
+            <span v-if="!isLoading" class="btn-icon facebook-icon">
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
             </span>
-            <span class="btn-text">以 Facebook 帳號登入</span>
+            <span v-if="isLoading" class="spinner"></span>
+            <span class="btn-text">{{ isLoading ? '登入中...' : '以 Facebook 帳號登入' }}</span>
           </button>
 
           <!-- Google 登入按鈕 -->
-          <button class="login-btn google-btn" @click="loginWithGoogle">
-            <span class="btn-icon google-icon">
+          <button 
+            class="login-btn google-btn" 
+            @click="loginWithGoogle"
+            :disabled="isLoading"
+          >
+            <span v-if="!isLoading" class="btn-icon google-icon">
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -41,7 +55,8 @@
                   fill="#EA4335" />
               </svg>
             </span>
-            <span class="btn-text">以 Google 帳號登入</span>
+            <span v-if="isLoading" class="spinner"></span>
+            <span class="btn-text">{{ isLoading ? '登入中...' : '以 Google 帳號登入' }}</span>
           </button>
         </div>
 
@@ -58,26 +73,104 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import logoIcon from '@/assets/images/icon.png'
 import Nav from '@/components/views/nav.vue'
+import { signInWithGoogle, signInWithFacebook } from '@/utility/supabaseClient'
+import { useAuth } from '@/utility/authStore'
 
 const router = useRouter()
+const route = useRoute()
+const { isAuthenticated } = useAuth()
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+// 錯誤訊息對應
+const errorMessages = {
+  'server_error': '伺服器錯誤，請稍後再試',
+  'unexpected_failure': 'Supabase 設定錯誤，請檢查以下設定：\n1. 確認已在 Supabase Dashboard 啟用 Google 和 Facebook 登入\n2. 確認 OAuth 回調 URL 設定正確\n3. 檢查資料庫是否正常運作',
+  'access_denied': '存取被拒絕，請重試',
+  'unauthorized_client': '應用程式未授權，請檢查 OAuth 設定'
+}
+
+// 檢查是否已登入或有錯誤
+onMounted(() => {
+  // 檢查 URL 中的錯誤參數
+  const urlError = route.query.error || route.hash.match(/error=([^&]+)/)?.[1]
+  const errorDescription = route.query.error_description || route.hash.match(/error_description=([^&]+)/)?.[1]
+  
+  if (urlError) {
+    Log.error('Login', '登入錯誤:', { error: urlError, description: errorDescription })
+    
+    // 顯示友善的錯誤訊息
+    if (errorDescription?.includes('Database error')) {
+      errorMessage.value = '⚠️ Supabase 資料庫設定錯誤\n\n請確認：\n1. Supabase 專案已建立且正常運作\n2. 已在 Authentication > Providers 啟用 Google/Facebook\n3. 已設定正確的 OAuth 回調 URL\n4. 資料庫 public.users 表格已建立'
+    } else {
+      errorMessage.value = errorMessages[urlError] || `登入失敗: ${decodeURIComponent(errorDescription || urlError)}`
+    }
+    
+    // 清除 URL 中的錯誤參數
+    router.replace({ path: '/login', query: {} })
+    return
+  }
+  
+  if (isAuthenticated.value) {
+    Log.msg('Login', '使用者已登入，導向首頁')
+    router.push('/')
+  }
+})
 
 // Facebook 登入
-const loginWithFacebook = () => {
-  console.log('Facebook 登入')
-  // TODO: 實作 Facebook OAuth 登入邏輯
-  // 暫時導向首頁
-  router.push('/')
+const loginWithFacebook = async () => {
+  if (isLoading.value) return
+  
+  isLoading.value = true
+  errorMessage.value = ''
+  Log.msg('loginWithFacebook', '開始 Facebook 登入流程')
+  
+  try {
+    const { data, error } = await signInWithFacebook()
+    
+    if (error) {
+      Log.error('loginWithFacebook', 'Facebook 登入失敗:', error)
+      errorMessage.value = '登入失敗，請稍後再試'
+    } else {
+      Log.msg('loginWithFacebook', 'Facebook 登入成功')
+      // OAuth 會自動重導向，不需要手動導向
+    }
+  } catch (error) {
+    Log.error('loginWithFacebook', 'Facebook 登入發生錯誤:', error)
+    errorMessage.value = '登入過程發生錯誤，請稍後再試'
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // Google 登入
-const loginWithGoogle = () => {
-  console.log('Google 登入')
-  // TODO: 實作 Google OAuth 登入邏輯
-  // 暫時導向首頁
-  router.push('/')
+const loginWithGoogle = async () => {
+  if (isLoading.value) return
+  
+  isLoading.value = true
+  errorMessage.value = ''
+  Log.msg('loginWithGoogle', '開始 Google 登入流程')
+  
+  try {
+    const { data, error } = await signInWithGoogle()
+    
+    if (error) {
+      Log.error('loginWithGoogle', 'Google 登入失敗:', error)
+      errorMessage.value = '登入失敗，請稍後再試'
+    } else {
+      Log.msg('loginWithGoogle', 'Google 登入成功')
+      // OAuth 會自動重導向，不需要手動導向
+    }
+  } catch (error) {
+    Log.error('loginWithGoogle', 'Google 登入發生錯誤:', error)
+    errorMessage.value = '登入過程發生錯誤，請稍後再試'
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -188,6 +281,63 @@ const loginWithGoogle = () => {
 
 .login-btn:active {
   transform: translateY(0);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-btn:disabled:hover {
+  transform: none;
+  box-shadow: var(--shadow-light);
+}
+
+/* 載入動畫 */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 錯誤訊息 */
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-medium);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.875rem;
+  text-align: left;
+  border: 1px solid #fcc;
+  animation: shake 0.5s ease-in-out;
+  white-space: pre-line;
+  line-height: 1.6;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 /* Facebook 按鈕 */
