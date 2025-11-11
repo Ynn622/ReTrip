@@ -16,7 +16,11 @@
     <!-- 景點圖片 -->
     <div class="attraction-image">
       <a class="image-link">
-        <img :src="attractionImage" alt="景點圖片" />
+        <img 
+          :src="attractionImage" 
+          alt="景點圖片"
+          @error="handleImageError"
+        />
       </a>
     </div>
 
@@ -35,7 +39,12 @@
         </a>
       </div>
       <!-- 隨機按鈕 -->
-      <button class="random-button" @click="handleRandomClick">
+      <button 
+        class="random-button" 
+        :class="{ 'is-loading': isLoading }"
+        :disabled="isLoading"
+        @click="handleRandomClick"
+      >
         <i class="fas fa-sync-alt refresh-icon"></i>
       </button>
     </div>
@@ -43,23 +52,39 @@
 </template>
 
 <script setup>
+import { callAPI } from '@/utility/apiConfig';
 import { ref, computed } from 'vue';
+
+// 載入狀態
+const isLoading = ref(false);
 
 // 台灣縣市列表
 const cities = ref([
   '全台', 
-  '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹市', '新竹縣', '苗栗縣', 
-  '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', 
+  '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市', '基隆市', '新竹市', '新竹縣', '苗栗縣', 
+  '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '屏東縣', '宜蘭縣', '花蓮縣', '臺東縣', '澎湖縣', 
   '金門縣', '連江縣'
 ]);
 
 // 城市選擇
-const selectedCity = ref('全台');
+const selectedCity = ref('臺北市');
 
 // 景點資訊
+const attraction = ref({});
 const attractionName = ref('士林觀光夜市');
 const attractionAddress = ref('111臺北市士林區基河路101號');
 const attractionImage = ref('https://www.travel.taipei/image/221601');
+
+// 預設圖片 URL
+const defaultImageUrl = 'https://skhcn.hatinh.gov.vn/storage/images.thumb.6884ae87-e99e-4995-8621-76a68fc0df7a.jpg';
+
+// 圖片載入失敗處理
+const handleImageError = (event) => {
+  Log.error('⚠️ 圖片載入失敗，使用預設圖片');
+  attractionImage.value = defaultImageUrl;
+  // 避免預設圖片也失敗時造成無限循環
+  event.target.onerror = null;
+};
 
 // 計算 Google Maps URL
 const googleMapsUrl = computed(() => {
@@ -67,10 +92,51 @@ const googleMapsUrl = computed(() => {
     return `https://www.google.com/maps/search/?api=1&query=${name}`;
 });
 
+// 清理圖片 URL 函數
+function cleanUrl(url) {
+  try { 
+    // 1️⃣ 先解碼（把 &amp%3B 之類還原）
+    const decoded = decodeURIComponent(url.replace(/&amp;/g, '&'));
+  
+    // 2️⃣ 解析 URL
+    const u = new URL(decoded);
+  
+    // 3️⃣ 只保留 id 參數
+    const id = u.searchParams.get('id');
+    return `${u.origin}${u.pathname}?id=${id}`;
+  } catch (error) {
+    return url; // 發生錯誤時回傳原始網址
+  }
+}
+
 // 隨機按鈕點擊事件（先留空）
-const handleRandomClick = () => {
-  console.log('隨機按鈕被點擊');
-  // TODO: 實現隨機景點邏輯
+const handleRandomClick = async () => {
+  // 防止重複點擊
+  if (isLoading.value) return;
+  
+  isLoading.value = true;
+  Log.msg('🔄 隨機按鈕被點擊，正在取得新的隨機景點資料...');
+
+  try {
+    const res = await callAPI({
+      url: '/attractions/random', 
+      params: { city: selectedCity.value }
+    });
+
+    if (res) {
+      attraction.value = res;
+      attractionName.value = res.name;
+      attractionAddress.value = `${res.city}${res.town}${res.street_address ? res.street_address : ''}`;
+      attractionImage.value = cleanUrl(res.main_image_url) || defaultImageUrl;
+      Log.msg('✅ 已更新隨機景點資料:', attraction.value);
+    } else {
+      Log.error('❌ 無法取得隨機景點資料');
+    }
+  } catch (error) {
+    Log.error('❌ 取得隨機景點資料時發生錯誤:', error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 </script>
 
@@ -161,6 +227,11 @@ const handleRandomClick = () => {
   object-fit: cover;
   display: block;
   transition: transform 0.3s ease;
+  /* 防止顯示 alt 文字 */
+  font-size: 0;
+  color: transparent;
+  text-indent: -9999px;
+  background-color: var(--bg-card);
 }
 
 .image-link:active img {
@@ -231,6 +302,24 @@ const handleRandomClick = () => {
 .random-button:active {
   transform: scale(0.95);
   box-shadow: 0 2px 6px rgba(212, 117, 107, 0.3);
+}
+
+.random-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.random-button.is-loading .refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .refresh-icon {
