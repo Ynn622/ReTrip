@@ -28,11 +28,11 @@
         <router-link to="/attraction" class="nav-item" @click="closeMenu">
           <span class="nav-icon"><i class="fas fa-map-marker-alt"></i></span>
           <span class="nav-text">景點庫</span>
-        </router-link>
-        <a href="#profile" class="nav-item" @click="closeMenu">
+        </router-link to="/login" class="nav-item" @click="closeMenu">
+        <router-link to="/login" class="nav-item" @click="closeMenu">
           <span class="nav-icon"><i class="fas fa-user"></i></span>
           <span class="nav-text">個人資料</span>
-        </a>
+        </router-link>
       </div>
     </div>
   </nav>
@@ -51,7 +51,8 @@ const currentPageName = computed(() => {
   const pageNames = {
     '/': '主頁',
     '/ai': 'ReTrip AI',
-    '/attraction': '景點庫'
+    '/attraction': '景點庫',
+    '/login': '登入'
   }
   return pageNames[route.path] || '主頁'
 })
