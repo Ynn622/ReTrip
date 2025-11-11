@@ -150,6 +150,8 @@ const handleAddToCollection = () => {
   font-weight: 700;
   color: var(--text-brown);
   margin: 0;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .info-button {

@@ -7,8 +7,20 @@
 
         <div class="hot-wrapper">
             <Attraction />
-            <Attraction />
-            <Attraction />
+            <Attraction
+                collection-text="清新空氣"
+                attraction-image="https://recreation.forest.gov.tw/Files/Forest/RA/photo/album/0200001/08_facebook.jpg"
+                attraction-name="滿月圓遊樂區" 
+                location="新北三峽"
+                :tags="['森林', '遊樂區']"
+            />
+            <Attraction
+                collection-text="必去景點"
+                attraction-image="https://recreation.forest.gov.tw/Files/Forest/RA/photo/album/0600002/%E4%B8%80%E7%B7%9A%E5%A4%A9.JPG"
+                attraction-name="墾丁遊樂區" 
+                location="屏東恆春"
+                :tags="['海邊', '度假']"
+            />
         </div>
     </div>
 </template>
