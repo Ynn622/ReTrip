@@ -73,9 +73,10 @@
 
 <script setup>
 import { callAPI } from '@/utility/apiConfig';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/utility/authStore';
+import { Log } from '@/utility/logger';
 
 // 路由和認證
 const router = useRouter();
@@ -292,6 +293,12 @@ watch(() => attraction.value.id, () => {
   if (attraction.value.id) {
     checkIfFavorite();
   }
+});
+
+// 組件掛載時獲取初始隨機景點
+onMounted(async () => {
+  Log.msg('🚀 組件掛載，獲取初始隨機景點...');
+  await handleRandomClick();
 });
 </script>
 
