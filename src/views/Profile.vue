@@ -2,8 +2,9 @@
   <div class="profile-page">
     <Nav />
     <div class="profile-container">
+      <!-- Profile Card - 移到上方,寬度填滿 -->
       <div class="profile-card">
-        <!-- 使用者頭像 -->
+        <!-- 左側:頭像 -->
         <div class="avatar-section">
           <img 
             :src="userAvatar" 
@@ -13,40 +14,39 @@
           />
         </div>
 
-        <!-- 使用者資訊 -->
+        <!-- 右側:使用者資訊 -->
         <div class="user-info">
           <h2 class="user-name">{{ displayName }}</h2>
-          <p class="user-email">{{ userEmail }}</p>
-          <p v-if="user?.user_metadata?.provider" class="user-provider">
-            登入方式: {{ providerName }}
+          <p v-if="providerName" class="user-provider">
+            登入方式：{{ providerName }}
           </p>
         </div>
+      </div>
 
-        <!-- 功能按鈕 -->
-        <div class="action-buttons">
-          <button class="action-btn edit-btn" @click="editProfile">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            編輯個人資料
-          </button>
-          
-          <button class="action-btn logout-btn" @click="handleLogout" :disabled="isLoggingOut">
-            <svg v-if="!isLoggingOut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            <span v-if="isLoggingOut" class="spinner"></span>
-            {{ isLoggingOut ? '登出中...' : '登出' }}
-          </button>
-        </div>
+      <!-- 功能按鈕區域 -->
+      <div class="action-buttons">
+        <button class="action-btn edit-btn" @click="editProfile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          編輯個人資料
+        </button>
+        
+        <button class="action-btn logout-btn" @click="handleLogout" :disabled="isLoggingOut">
+          <svg v-if="!isLoggingOut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span v-if="isLoggingOut" class="spinner"></span>
+          {{ isLoggingOut ? '登出中...' : '登出' }}
+        </button>
+      </div>
 
-        <!-- 錯誤訊息 -->
-        <div v-if="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
+      <!-- 錯誤訊息 -->
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
       </div>
     </div>
   </div>
@@ -85,7 +85,6 @@ const providerName = computed(() => {
   const providerMap = {
     'google': 'Google',
     'facebook': 'Facebook',
-    'email': 'Email'
   }
   return providerMap[provider] || provider || '未知'
 })
@@ -140,18 +139,24 @@ const handleLogout = async () => {
 .profile-container {
   flex: 1;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--spacing-lg);
   padding: var(--spacing-lg) var(--spacing-md);
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
 }
 
+/* Profile Card - 放在上方,寬度填滿 */
 .profile-card {
   background: var(--bg-white);
   border-radius: var(--radius-xlarge);
   box-shadow: var(--shadow-heavy);
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg);
   width: 100%;
-  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -166,51 +171,48 @@ const handleLogout = async () => {
   }
 }
 
-/* 頭像區域 */
+/* 左側:頭像區域 */
 .avatar-section {
-  text-align: center;
-  margin-bottom: var(--spacing-lg);
+  flex-shrink: 0;
 }
 
 .avatar-img {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   object-fit: cover;
   box-shadow: var(--shadow-medium);
   border: 4px solid var(--primary-brown);
 }
 
-/* 使用者資訊 */
+/* 右側:使用者資訊 */
 .user-info {
-  text-align: center;
-  margin-bottom: var(--spacing-xl);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--spacing-xs);
 }
 
 .user-name {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: bold;
   color: var(--primary-brown);
-  margin-bottom: var(--spacing-xs);
-}
-
-.user-email {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xs);
+  margin: 0;
 }
 
 .user-provider {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   color: var(--text-light);
-  font-style: italic;
+  margin: 0;
 }
 
-/* 功能按鈕 */
+/* 功能按鈕區域 */
 .action-buttons {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  width: 100%;
 }
 
 .action-btn {
@@ -290,25 +292,25 @@ const handleLogout = async () => {
   color: #c33;
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-medium);
-  margin-top: var(--spacing-md);
   font-size: 0.875rem;
   text-align: center;
   border: 1px solid #fcc;
+  width: 100%;
 }
 
 /* 響應式設計 */
 @media (min-width: 768px) {
   .profile-card {
-    padding: 48px;
+    padding: var(--spacing-xl);
   }
 
   .avatar-img {
-    width: 150px;
-    height: 150px;
+    width: 100px;
+    height: 100px;
   }
 
   .user-name {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .action-buttons {
@@ -317,6 +319,17 @@ const handleLogout = async () => {
 
   .action-btn {
     flex: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .avatar-img {
+    width: 120px;
+    height: 120px;
+  }
+
+  .user-name {
+    font-size: 2rem;
   }
 }
 </style>
