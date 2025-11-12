@@ -56,7 +56,8 @@ const currentPageName = computed(() => {
     '/ai': 'ReTrip AI',
     '/attraction': '景點庫',
     '/login': '登入',
-    '/profile': '個人資料'
+    '/profile': '個人資料',
+    '/route-planner': '路線規劃'
   }
   return pageNames[route.path] || '主頁'
 })

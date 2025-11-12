@@ -164,8 +164,17 @@ const generateRoute = () => {
         alert('請至少選擇一個景點');
         return;
     }
-    alert(`準備為 ${selectedAttractions.length} 個景點產生路線`);
-    // TODO: 實作產生路線的邏輯
+    
+    // 提取選中的景點 IDs
+    const selectedIds = selectedAttractions.map(a => a.id);
+    
+    Log.msg('Attraction', `準備為 ${selectedIds.length} 個景點產生路線`);
+    
+    // 導向路線規劃頁面，並傳遞景點 IDs
+    router.push({
+        path: '/route-planner',
+        query: { ids: selectedIds }
+    });
 };
 
 // 組件掛載時載入收藏景點

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Ai from '../views/Ai.vue'
 import Attraction from '../views/Attraction.vue'
+import RoutePlanner from '../views/RoutePlanner.vue'
 import { authGuard } from '../utility/authGuard'
 
 const routes = [
@@ -20,6 +21,12 @@ const routes = [
     path: '/attraction',
     name: 'Attraction',
     component: Attraction,
+    meta: { requiresAuth: true } // 需要登入才能訪問
+  },
+  {
+    path: '/route-planner',
+    name: 'RoutePlanner',
+    component: RoutePlanner,
     meta: { requiresAuth: true } // 需要登入才能訪問
   },
   {
