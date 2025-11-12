@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -97,18 +97,29 @@ const attractionIds = ref([]);
 
 // 初始化地圖
 const initMap = () => {
-  if (!mapContainer.value) return;
+  if (!mapContainer.value) {
+    Log.error('地圖錯誤', '找不到地圖容器');
+    return;
+  }
 
-  map = new mapboxgl.Map({
-    container: mapContainer.value,
-    style: 'mapbox://styles/mapbox/streets-v12',
-    center: [121.5654, 25.0330], // 台北預設中心
-    zoom: 12
-  });
+  try {
+    map = new mapboxgl.Map({
+      container: mapContainer.value,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [121.5654, 25.0330], // 台北預設中心
+      zoom: 12
+    });
 
-  map.on('load', () => {
-    Log.msg('RoutePlanner', '地圖載入完成');
-  });
+    map.on('load', () => {
+      Log.msg('RoutePlanner', '地圖載入完成');
+    });
+
+    map.on('error', (e) => {
+      Log.error('地圖錯誤', '地圖載入失敗', e);
+    });
+  } catch (error) {
+    Log.error('地圖初始化錯誤', error);
+  }
 };
 
 // 取得景點座標
@@ -188,25 +199,37 @@ const fetchAttractionDetails = async () => {
 
 // 繪製路線
 const drawRoute = async () => {
-  if (!map) return;
+  if (!map) {
+    Log.error('繪製路線錯誤', '地圖未初始化');
+    return;
+  }
+
+  // 等待地圖完全載入
+  if (!map.isStyleLoaded()) {
+    Log.msg('RoutePlanner', '等待地圖載入...');
+    await new Promise(resolve => {
+      map.once('load', resolve);
+    });
+  }
 
   // 過濾出有效的座標點
   const validWaypoints = waypoints.value.filter(
     wp => wp.latitude && wp.longitude
   );
 
+  Log.msg('RoutePlanner', `有效景點數量: ${validWaypoints.length}`);
+
   if (validWaypoints.length === 0) {
     Log.msg('RoutePlanner', '沒有有效的座標點');
     return;
   }
 
-  // 添加標記
-  validWaypoints.forEach((waypoint, index) => {
-    // 創建自訂標記元素
+  // 如果只有一個點，直接居中顯示並添加標記
+  if (validWaypoints.length === 1) {
     const el = document.createElement('div');
     el.className = 'custom-marker';
-    el.textContent = index + 1;
-    el.style.backgroundColor = index === 0 ? '#4caf50' : (index === validWaypoints.length - 1 ? '#f44336' : '#FF6B6B');
+    el.textContent = '1';
+    el.style.backgroundColor = '#4caf50';
     el.style.width = '32px';
     el.style.height = '32px';
     el.style.borderRadius = '50%';
@@ -220,16 +243,13 @@ const drawRoute = async () => {
     el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
 
     new mapboxgl.Marker(el)
-      .setLngLat([waypoint.longitude, waypoint.latitude])
+      .setLngLat([validWaypoints[0].longitude, validWaypoints[0].latitude])
       .setPopup(
         new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`<h3>${waypoint.name}</h3>`)
+          .setHTML(`<h3>${validWaypoints[0].name}</h3>`)
       )
       .addTo(map);
-  });
-
-  // 如果只有一個點，直接居中顯示
-  if (validWaypoints.length === 1) {
+    
     map.flyTo({
       center: [validWaypoints[0].longitude, validWaypoints[0].latitude],
       zoom: 14
@@ -237,25 +257,135 @@ const drawRoute = async () => {
     return;
   }
 
-  // 使用 Mapbox Directions API 取得路線
+  // 使用簡單的貪婪算法優化路線順序（最近鄰居法）
   try {
-    const coordinates = validWaypoints
+    // 如果只有 2 個點，不需要優化
+    if (validWaypoints.length <= 2) {
+      Log.msg('RoutePlanner', '景點數量 <= 2，不需要優化');
+      await drawSimpleRoute(validWaypoints);
+      return;
+    }
+
+    Log.msg('RoutePlanner', '正在計算最佳路線順序...');
+    
+    // 最近鄰居算法優化順序
+    const optimizedWaypoints = [validWaypoints[0]]; // 從第一個點開始
+    const remaining = validWaypoints.slice(1);
+    
+    while (remaining.length > 0) {
+      const current = optimizedWaypoints[optimizedWaypoints.length - 1];
+      let nearest = remaining[0];
+      let nearestIndex = 0;
+      let minDistance = calculateDistance(current, nearest);
+      
+      // 找出最近的點
+      for (let i = 1; i < remaining.length; i++) {
+        const distance = calculateDistance(current, remaining[i]);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = remaining[i];
+          nearestIndex = i;
+        }
+      }
+      
+      optimizedWaypoints.push(nearest);
+      remaining.splice(nearestIndex, 1);
+    }
+    
+    Log.msg('RoutePlanner', '原始順序:', validWaypoints.map(wp => wp.name));
+    Log.msg('RoutePlanner', '優化後順序:', optimizedWaypoints.map(wp => wp.name));
+    
+    // 更新 waypoints 顯示順序
+    const newWaypoints = [];
+    optimizedWaypoints.forEach(wp => {
+      const originalWaypoint = waypoints.value.find(w => w.id === wp.id);
+      if (originalWaypoint) {
+        newWaypoints.push(originalWaypoint);
+      }
+    });
+    
+    // 添加任何被過濾掉的無效景點到最後
+    waypoints.value.forEach(wp => {
+      if (!newWaypoints.find(w => w.id === wp.id)) {
+        newWaypoints.push(wp);
+      }
+    });
+    
+    waypoints.value = newWaypoints;
+    
+    // 繪製優化後的路線
+    await drawSimpleRoute(optimizedWaypoints);
+    
+  } catch (error) {
+    Log.error('路線規劃錯誤', '無法取得路線', error);
+  }
+};
+
+// 計算兩點之間的距離（使用 Haversine 公式）
+const calculateDistance = (point1, point2) => {
+  const R = 6371; // 地球半徑（公里）
+  const dLat = (point2.latitude - point1.latitude) * Math.PI / 180;
+  const dLon = (point2.longitude - point1.longitude) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(point1.latitude * Math.PI / 180) * Math.cos(point2.latitude * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// 繪製簡單路線（使用 Directions API）
+const drawSimpleRoute = async (orderedWaypoints) => {
+  try {
+    const coordinates = orderedWaypoints
       .map(wp => `${wp.longitude},${wp.latitude}`)
       .join(';');
 
-    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
     
     const response = await fetch(directionsUrl);
     const data = await response.json();
+
+    if (data.code !== 'Ok') {
+      Log.error('Directions API 錯誤', data.message || data.code, data);
+      throw new Error(`Mapbox API 錯誤: ${data.message || data.code}`);
+    }
 
     if (data.routes && data.routes.length > 0) {
       const route = data.routes[0];
       
       // 計算路線統計
       routeStats.value = {
-        distance: (route.distance / 1000).toFixed(2), // 轉換為公里
-        duration: Math.round(route.duration / 60) // 轉換為分鐘
+        distance: (route.distance / 1000).toFixed(2),
+        duration: Math.round(route.duration / 60)
       };
+
+      // 添加標記（使用優化後的順序）
+      orderedWaypoints.forEach((waypoint, index) => {
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.textContent = index + 1;
+        el.style.backgroundColor = index === 0 ? '#4caf50' : (index === orderedWaypoints.length - 1 ? '#f44336' : '#FF6B6B');
+        el.style.width = '32px';
+        el.style.height = '32px';
+        el.style.borderRadius = '50%';
+        el.style.color = 'white';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.fontWeight = 'bold';
+        el.style.fontSize = '14px';
+        el.style.border = '3px solid white';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+        new mapboxgl.Marker(el)
+          .setLngLat([waypoint.longitude, waypoint.latitude])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 25 })
+              .setHTML(`<h3>${waypoint.name}</h3>`)
+          )
+          .addTo(map);
+      });
 
       // 添加路線圖層
       if (map.getSource('route')) {
@@ -284,7 +414,7 @@ const drawRoute = async () => {
 
       // 調整地圖視野以包含所有點
       const bounds = new mapboxgl.LngLatBounds();
-      validWaypoints.forEach(wp => {
+      orderedWaypoints.forEach(wp => {
         bounds.extend([wp.longitude, wp.latitude]);
       });
       
@@ -295,7 +425,8 @@ const drawRoute = async () => {
       Log.msg('RoutePlanner', '路線繪製完成');
     }
   } catch (error) {
-    Log.error('路線規劃錯誤', '無法取得路線', error);
+    Log.error('繪製路線錯誤', error);
+    throw error;
   }
 };
 
@@ -311,18 +442,33 @@ onMounted(async () => {
   
   if (ids) {
     attractionIds.value = Array.isArray(ids) ? ids : [ids];
-    Log.msg('RoutePlanner', `接收到 ${attractionIds.value.length} 個景點 ID`);
+    Log.msg('RoutePlanner', `接收到 ${attractionIds.value.length} 個景點 ID`, attractionIds.value);
   } else {
     Log.msg('RoutePlanner', '沒有接收到景點 ID，返回上一頁');
     router.push('/attraction');
     return;
   }
 
+  // 等待 DOM 渲染完成
+  await nextTick();
+
   // 初始化地圖
   initMap();
 
+  // 確保地圖初始化成功後再繼續
+  if (!map) {
+    Log.error('RoutePlanner', '地圖初始化失敗');
+    isLoading.value = false;
+    return;
+  }
+
   // 取得座標並繪製路線
-  await fetchCoordinates();
+  try {
+    await fetchCoordinates();
+  } catch (error) {
+    Log.error('RoutePlanner', '載入路線失敗', error);
+    isLoading.value = false;
+  }
 });
 
 // 組件卸載
