@@ -57,6 +57,8 @@
     <attractionDetail 
       :attractionData="attractionData"
       :isVisible="showDetail"
+      :isFavorite="isFavorite"
+      :isLoading="isLoading"
       @close="showDetail = false"
       @addToCollection="handleAddToCollection"
     />

@@ -43,8 +43,14 @@
           </div>
 
           <!-- 加入景點庫按鈕 -->
-          <button class="add-button" @click="handleAddToCollection">
-            加入景點庫
+          <button 
+            class="add-button" 
+            @click="handleAddToCollection"
+            :disabled="isLoading"
+            :class="{ 'button-loading': isLoading }"
+          >
+            <span>{{ isFavorite ? '從景點庫移除' : '加入景點庫' }}</span>
+            <i class="fas fa-spinner fa-spin spinner-small" :class="{ 'visible': isLoading }"></i>
           </button>
         </div>
       </div>
@@ -68,6 +74,14 @@ const props = defineProps({
     default: null
   },
   isVisible: {
+    type: Boolean,
+    default: false
+  },
+  isFavorite: {
+    type: Boolean,
+    default: false
+  },
+  isLoading: {
     type: Boolean,
     default: false
   }
@@ -101,7 +115,7 @@ const handleClose = () => {
 
 // 加入景點庫
 const handleAddToCollection = () => {
-  emit('addToCollection', props.attractionData);
+  emit('addToCollection');
 };
 </script>
 
@@ -309,7 +323,8 @@ const handleAddToCollection = () => {
 /* 加入景點庫按鈕 */
 .add-button {
   width: 100%;
-  padding: 14px;
+  height: 50px;
+  padding: 0 14px;
   background-color: var(--text-brown, #5C4033);
   color: var(--bg-white, #FFFFFF);
   border: none;
@@ -317,20 +332,50 @@ const handleAddToCollection = () => {
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   font-family: 'Noto Sans TC', sans-serif;
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.add-button:hover {
+.add-button:not(:disabled):hover {
   background-color: var(--primary-brown-dark, #4A3227);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(92, 64, 51, 0.3);
 }
 
-.add-button:active {
+.add-button:not(:disabled):active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(92, 64, 51, 0.2);
+}
+
+.add-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.add-button.button-loading {
+  pointer-events: none;
+}
+
+.add-button span {
+  display: inline-block;
+}
+
+.add-button .spinner-small {
+  font-size: 16px;
+  margin-left: 8px;
+  display: inline-block;
+  opacity: 0;
+  width: 0;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.add-button .spinner-small.visible {
+  opacity: 1;
+  width: 16px;
 }
 
 /* 載入中 */
