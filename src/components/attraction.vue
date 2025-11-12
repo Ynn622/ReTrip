@@ -38,12 +38,18 @@
       </div>
 
       <!-- 加入景點庫按鈕 -->
-      <button class="add-button" @click="handleAddToCollection">
-        加入景點庫
+      <button 
+        class="add-button" 
+        @click="handleAddToCollection"
+        :disabled="isLoading"
+        :class="{ 'button-loading': isLoading }"
+      >
+        <span>{{ isFavorite ? '從景點庫移除' : '加入景點庫' }}</span>
+        <i class="fas fa-spinner fa-spin spinner-small" :class="{ 'visible': isLoading }"></i>
       </button>
     </div>
     </div>
-    <div v-else class="loading">
+    <div v-else class="card-loading">
       <p>載入中...</p>
     </div>
 
@@ -54,13 +60,28 @@
       @close="showDetail = false"
       @addToCollection="handleAddToCollection"
     />
+
+    <!-- Toast 通知 -->
+    <Transition name="toast">
+      <div v-if="toast.visible" class="toast" :class="toast.type">
+        <i :class="toast.type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+        <span>{{ toast.message }}</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { callAPI } from '@/utility/apiConfig';
+import { useAuth } from '@/utility/authStore';
 import attractionDetail from './attractionDetail.vue';
+import { Log } from '@/utility/logger';
+
+// 路由和認證
+const router = useRouter();
+const { isAuthenticated, userId } = useAuth();
 
 // Props 定義（如果需要從父組件傳入）
 const props = defineProps({
@@ -80,6 +101,33 @@ const attractionData = ref(null);
 
 // 控制詳細資訊視窗顯示
 const showDetail = ref(false);
+
+// 收藏狀態
+const isFavorite = ref(false);
+
+// 載入狀態（用於按鈕旋轉動畫）
+const isLoading = ref(false);
+
+// Toast 訊息狀態
+const toast = ref({
+  visible: false,
+  message: '',
+  type: 'success' // 'success' or 'error'
+});
+
+// 顯示 Toast
+const showToast = (message, type = 'success') => {
+  toast.value = {
+    visible: true,
+    message,
+    type
+  };
+  
+  // 3 秒後自動隱藏
+  setTimeout(() => {
+    toast.value.visible = false;
+  }, 3000);
+};
 
 // 取得地點文字
 const getLocationText = () => {
@@ -108,9 +156,63 @@ const openGoogleMaps = () => {
 };
 
 // 加入景點庫按鈕點擊事件
-const handleAddToCollection = () => {
-  if (attractionData.value) {
-    alert(`已將 ${attractionData.value.name} 加入景點庫！`);
+const handleAddToCollection = async () => {
+  // 檢查是否已登入
+  if (!isAuthenticated.value) {
+    // 未登入，導向登入頁面
+    Log.msg('attraction', '使用者未登入，導向登入頁面');
+    router.push({
+      path: '/login',
+      query: { redirect: router.currentRoute.value.fullPath }
+    });
+    return;
+  }
+
+  // 已登入，執行收藏/取消收藏
+  if (!attractionData.value || !userId.value) return;
+
+  // 防止重複點擊
+  if (isLoading.value) return;
+
+  isLoading.value = true;
+
+  try {
+    if (isFavorite.value) {
+      // 已收藏，執行刪除
+      await callAPI({
+        method: 'DELETE',
+        url: '/favorites/',
+        body: {
+          user_id: userId.value,
+          attraction_id: props.attractionID
+        },
+        funcName: 'deleteFromFavorites'
+      });
+      isFavorite.value = false;
+      showToast(`已將 ${attractionData.value.name} 從景點庫移除！`, 'success');
+      Log.msg('attraction', '成功從景點庫移除');
+    } else {
+      // 未收藏，執行新增
+      Log.msg('attraction', userId.value, props.attractionID);
+      await callAPI({
+        method: 'POST',
+        url: '/favorites/',
+        body: {
+          user_id: userId.value,
+          attraction_id: props.attractionID
+        },
+        funcName: 'addToFavorites'
+      });
+      
+      isFavorite.value = true;
+      showToast(`已將 ${attractionData.value.name} 加入景點庫！`, 'success');
+      Log.msg('attraction', '成功加入景點庫');
+    }
+  } catch (error) {
+    Log.error('API 錯誤', '操作景點庫失敗', error);
+    showToast('操作失敗，請稍後再試', 'error');
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -129,9 +231,42 @@ const fetchAttractionData = async () => {
   }
 };
 
+// 檢查景點是否已收藏
+const checkIfFavorite = async () => {
+  if (!isAuthenticated.value || !userId.value) {
+    isFavorite.value = false;
+    return;
+  }
+  
+  try {
+    // 獲取使用者所有已收藏的景點
+    const favorites = await callAPI({
+      method: 'GET',
+      url: `/favorites/${userId.value}`,
+      funcName: 'getFavorites'
+    });
+    
+    // 檢查當前景點是否在收藏列表中
+    if (Array.isArray(favorites)) {
+      isFavorite.value = favorites.some(
+        favorite => favorite.attraction_id === props.attractionID
+      );
+    } else {
+      isFavorite.value = false;
+    }
+    
+    Log.msg('attraction', `收藏狀態: ${isFavorite.value ? '已收藏' : '未收藏'}`);
+  } catch (error) {
+    // 如果發生錯誤，預設為未收藏
+    isFavorite.value = false;
+    Log.msg('attraction', '無法檢查收藏狀態');
+  }
+};
+
 // 組件掛載時取得資料
 onMounted(async () => {
   await fetchAttractionData();
+  await checkIfFavorite();
 });
 </script>
 
@@ -349,21 +484,127 @@ onMounted(async () => {
   transition: all 0.3s ease;
   font-family: 'Noto Sans TC', sans-serif;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
 }
 
-.add-button:hover {
+.add-button:not(:disabled):hover {
   background-color: var(--primary-brown-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-medium);
 }
 
-.add-button:active {
+.add-button:not(:disabled):active {
   transform: translateY(0);
   box-shadow: var(--shadow-light);
 }
 
-/* 載入中樣式 */
-.loading {
+.add-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.add-button.button-loading {
+  pointer-events: none;
+}
+
+.add-button span {
+  display: inline-block;
+}
+
+.add-button .spinner-small {
+  font-size: 14px;
+  margin-left: 6px;
+  display: inline-block;
+  opacity: 0;
+  width: 0;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.add-button .spinner-small.visible {
+  opacity: 1;
+  width: 14px;
+}
+
+/* Toast 通知樣式 */
+.toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-white);
+  padding: 10px 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  min-width: 180px;
+  max-width: 90vw;
+}
+
+.toast.success {
+  border-left: 4px solid #4caf50;
+}
+
+.toast.success i {
+  color: #4caf50;
+  font-size: 18px;
+}
+
+.toast.error {
+  border-left: 4px solid #f44336;
+}
+
+.toast.error i {
+  color: #f44336;
+  font-size: 18px;
+}
+
+.toast span {
+  color: var(--text-brown);
+  flex: 1;
+}
+
+/* Toast 動畫 */
+.toast-enter-active {
+  animation: toast-in 0.3s ease-out;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease-in;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+/* 景點卡片載入中樣式 */
+.card-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,7 +616,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-medium);
 }
 
-.loading p {
+.card-loading p {
   color: var(--text-brown);
   font-size: 16px;
   font-weight: 500;

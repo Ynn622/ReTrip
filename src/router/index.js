@@ -19,7 +19,8 @@ const routes = [
   {
     path: '/attraction',
     name: 'Attraction',
-    component: Attraction
+    component: Attraction,
+    meta: { requiresAuth: true } // 需要登入才能訪問
   },
   {
     path: '/login',
