@@ -1,11 +1,12 @@
 <template>
-  <div class="modal-overlay" @click.self="handleClose" v-if="isVisible">
-    <div class="detail-modal">
-      <button class="close-button" @click="handleClose">
-        <i class="fas fa-times"></i>
-      </button>
+  <Teleport to="body">
+    <div class="modal-overlay" @click.self="handleClose" v-if="isVisible">
+      <div class="detail-modal">
+        <button class="close-button" @click="handleClose">
+          <i class="fas fa-times"></i>
+        </button>
 
-      <div class="detail-content" v-if="attractionData">
+        <div class="detail-content" v-if="attractionData">
         <!-- 景點圖片 -->
         <div class="detail-image-container">
           <img 
@@ -61,6 +62,7 @@
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup>
