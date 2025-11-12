@@ -212,7 +212,7 @@ const handleProfileClick = () => {
     background-color: #F5EDE1;
     flex-direction: column;
     align-items: flex-start;
-    padding: 5rem 2rem 2rem;
+    padding: 4rem 2rem 2rem;
     gap: 1.5rem;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
     transition: right 0.3s ease;
@@ -243,7 +243,7 @@ const handleProfileClick = () => {
   }
 
   .nav-menu {
-    width: 80%;
+    width: 65%;
   }
 }
 </style> 
