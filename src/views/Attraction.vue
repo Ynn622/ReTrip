@@ -2,7 +2,20 @@
     <div class="home">
         <Nav />
         <main class="main-content">
+            <!-- 載入中 -->
+            <div v-if="isLoading" class="loading-container">
+                <p>載入中...</p>
+            </div>
+            
+            <!-- 空狀態 -->
+            <div v-else-if="attractions.length === 0" class="empty-state">
+                <p>目前沒有收藏的景點</p>
+                <p class="empty-hint">快去探索並加入喜歡的景點吧！</p>
+            </div>
+            
+            <!-- 景點列表 -->
             <AttractionRow 
+                v-else
                 v-for="attraction in attractions" 
                 :key="attraction.id"
                 :attractionID="attraction.id"
@@ -36,15 +49,22 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import AttractionRow from '@/components/attractionRow.vue';
 import Nav from '@/components/views/nav.vue';
+import { callAPI } from '@/utility/apiConfig';
+import { useAuth } from '@/utility/authStore';
+
+// 路由和認證
+const router = useRouter();
+const { isAuthenticated, userId } = useAuth();
 
 // 景點列表
-const attractions = ref([
-    { id: '55290abd-14c6-4bed-832d-985e5992bfda', checked: false },
-    { id: 'b5ee0db5-b10f-496d-b050-d22c231fe5b3', checked: false },
-]);
+const attractions = ref([]);
+
+// 載入狀態
+const isLoading = ref(true);
 
 // 計算已選取的景點數量
 const selectedCount = computed(() => {
@@ -73,13 +93,67 @@ const toggleSelectAll = () => {
 };
 
 // 刪除景點
-const handleDelete = (attractionID) => {
-    const confirmed = confirm('確定要刪除此景點嗎？');
-    if (confirmed) {
+const handleDelete = async (attractionID) => {
+    const confirmed = confirm('確定要從景點庫移除此景點嗎？');
+    if (!confirmed) return;
+
+    try {
+        // 調用刪除 API
+        await callAPI({
+            method: 'DELETE',
+            url: '/favorites/',
+            body: {
+                user_id: userId.value,
+                attraction_id: attractionID
+            },
+            funcName: 'deleteFromFavorites'
+        });
+
+        // 從列表中移除
         const index = attractions.value.findIndex(a => a.id === attractionID);
         if (index !== -1) {
             attractions.value.splice(index, 1);
         }
+
+        Log.msg('Attraction', '成功從景點庫移除');
+    } catch (error) {
+        Log.error('API 錯誤', '刪除景點失敗', error);
+        alert('刪除失敗，請稍後再試');
+    }
+};
+
+// 載入收藏的景點
+const fetchFavorites = async () => {
+    // 檢查是否已登入
+    if (!isAuthenticated.value || !userId.value) {
+        Log.msg('Attraction', '使用者未登入');
+        router.push('/login');
+        return;
+    }
+
+    isLoading.value = true;
+    try {
+        const favorites = await callAPI({
+            method: 'GET',
+            url: `/favorites/${userId.value}`,
+            funcName: 'getFavorites'
+        });
+
+        // 將收藏的景點轉換為列表格式
+        if (Array.isArray(favorites)) {
+            attractions.value = favorites.map(fav => ({
+                id: fav.attraction_id,
+                checked: false
+            }));
+            Log.msg('Attraction', `載入了 ${attractions.value.length} 個收藏景點`);
+        } else {
+            attractions.value = [];
+        }
+    } catch (error) {
+        Log.error('API 錯誤', '取得收藏景點失敗', error);
+        attractions.value = [];
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -93,6 +167,11 @@ const generateRoute = () => {
     alert(`準備為 ${selectedAttractions.length} 個景點產生路線`);
     // TODO: 實作產生路線的邏輯
 };
+
+// 組件掛載時載入收藏景點
+onMounted(async () => {
+    await fetchFavorites();
+});
 </script>
 
 <style scoped>
@@ -207,6 +286,41 @@ const generateRoute = () => {
     background-color: #ccc;
     cursor: not-allowed;
     box-shadow: none;
+}
+
+/* 載入中狀態 */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    font-size: 18px;
+    color: var(--text-brown);
+    font-weight: 500;
+}
+
+/* 空狀態 */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.empty-state p {
+    font-size: 18px;
+    color: var(--text-brown);
+    font-weight: 500;
+    margin: 8px 0;
+}
+
+.empty-hint {
+    font-size: 16px;
+    color: var(--text-gray);
+    font-weight: 400;
 }
 
 /* 響應式設計 */
