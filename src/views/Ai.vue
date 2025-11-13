@@ -123,7 +123,7 @@ const isLoading = ref(false) // 載入狀態
 
 // 檢查是否包含記憶相關關鍵字
 const hasMemoryKeywords = (text) => {
-    const keywords = ['回憶', '記憶', '曾經', '曾今', '印象', '記得', '懷念', '熟悉', '想', '記憶中']
+    const keywords = ['回憶', '記憶', '曾經', '曾今', '印象', '記得', '懷念', '熟悉', '想', '記憶中', '去']
     return keywords.some(keyword => text.includes(keyword))
 }
 
