@@ -35,4 +35,6 @@ coverage
 # Vitest
 __screenshots__/
 
+/icon.png
+
 .env
