@@ -1,0 +1,63 @@
+/* 自訂 Toast 樣式 */
+.Vue-Toastification__toast {
+  font-family: 'Noto Sans TC', sans-serif;
+  min-width: 280px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.Vue-Toastification__toast--success {
+  background-color: #ffffff;
+  color: #4a4a4a;
+  border-left: 4px solid #4caf50;
+}
+
+.Vue-Toastification__toast--error {
+  background-color: #ffffff;
+  color: #4a4a4a;
+  border-left: 4px solid #f44336;
+}
+
+.Vue-Toastification__toast--info {
+  background-color: #ffffff;
+  color: #4a4a4a;
+  border-left: 4px solid #2196f3;
+}
+
+.Vue-Toastification__toast--warning {
+  background-color: #ffffff;
+  color: #4a4a4a;
+  border-left: 4px solid #ff9800;
+}
+
+.Vue-Toastification__toast-body {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.Vue-Toastification__icon {
+  margin-right: 10px;
+}
+
+.Vue-Toastification__progress-bar {
+  height: 3px;
+}
+
+.Vue-Toastification__toast--success .Vue-Toastification__progress-bar {
+  background-color: #4caf50;
+}
+
+.Vue-Toastification__toast--error .Vue-Toastification__progress-bar {
+  background-color: #f44336;
+}
+
+.Vue-Toastification__close-button {
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.Vue-Toastification__close-button:hover {
+  opacity: 1;
+}
